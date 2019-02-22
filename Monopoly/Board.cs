@@ -29,7 +29,7 @@ namespace Monopoly
             return ChanceCards[rng.Next(ChanceCards.Length)];
         }
         public BoardSpace[] boardSpaces;
-        protected List<Player> players;
+        internal List<Player> players;
 
         public IReadOnlyList<Player> Players => players;
 
@@ -48,6 +48,7 @@ namespace Monopoly
             boardSpaces = new BoardSpace[]
             {
                 null,
+                // first row
                 new Property(this, "Old Kent Road", PropertyFamily.Brown, 60m, 30m, 50m, new decimal[] { 2m,  10m, 30m, 90m, 160m, 250m}),
                 new CommunityChestSpace(),
                 new Property(this,  "Whitechapel Road", PropertyFamily.Brown, 60m, 30m, 50m, new decimal[] { 4m, 20m,  60m, 180m, 360m, 450m}),
@@ -59,18 +60,40 @@ namespace Monopoly
                 new Property(this, "Euston Road", PropertyFamily.LightBlue, 100m, 50m, 50m, new decimal[]{ 6m, 30m, 90m, 270m, 400m, 550m }),
 
                 new Property(this, "Pentonville Road", PropertyFamily.LightBlue, 100m, 50m, 50m, new decimal[]{ 8m, 40m, 100m, 300m, 450m, 600m }),
+               
+                // second row
                 new JailSpace(),
+                new Property(this, "Pall Mall", PropertyFamily.Pink, 140m, 100m, 70m, new decimal[]{ 10m, 50m, 150m, 450m, 625m, 700m }),
+                new Utility("Electric Company"),
+                new Property(this, "Whitehall", PropertyFamily.Pink, 140m, 100m, 70m, new decimal[] {10m, 50m, 150m, 450m, 625m, 700m}),
+                new Property(this, "Northumberland Avenue", PropertyFamily.Pink, 160m, 100m, 80m, new decimal[] { 12m, 60m, 180m, 500m, 700m, 900m }),
+                new StationSpace("Marylebone Station"),
+                new Property(this, "Bow Street", PropertyFamily.Orange, 180m, 100m, 90m, new decimal[] { 14m, 70m, 200m, 550m, 750m, 950m }),
+                new CommunityChestSpace(),
+                new Property(this, "Marlborough Street", PropertyFamily.Orange, 180m, 100m, 90m, new decimal[] { 14m, 70m, 200m, 550m, 750m, 950m }),
+
+                new Property(this, "Vine Street", PropertyFamily.Orange, 200m, 100m, 100m, new decimal[] { 16m, 80m, 220m, 600m, 800m, 1000m}),
+                
+                
+                // third row
+                new Property(this, "Strand", PropertyFamily.Red, 220m, 150m, 110, new decimal[] { 18m, 90m, 250m, 700m, 875m, 1050m }),
+                new ChanceSpace(),
+                new Property(this, "Fleet Street", PropertyFamily.Red, 220m, 150m, 110, new decimal[] { 18m, 90m, 250m, 700m, 875m, 1050m }),
+                new Property(this, "Trafalgar Square", PropertyFamily.Red, 240m, 150m, 120m, new decimal[] { 20m, 100m, 300m, 750m, 925m, 1100m }),
+                
+                // fourth row
                 //...
                 new GotoJailSpace(),
                 //...
                 new Property(this, "Park Lane", PropertyFamily.DarkBlue, 350m, 200m, 175m, new decimal[] { 35m, 175m, 500m, 1100m, 1300m, 1500m }),
+                new TaxSpace("Super Tax", 400m),
                 new Property(this, "Mayfair", PropertyFamily.DarkBlue, 400m, 200m, 200m, new decimal[] { 50m, 200m, 600m, 1400m, 1700m, 2000m }),
             };
         }
 
         public void Setup()
         {
-            playerInteracter.SetupPlayers(players);
+            playerInteracter.Setup(this);
         }
 
         public void DoTurn()
@@ -89,7 +112,7 @@ namespace Monopoly
     public interface IPlayerInteracter
     {
         Board Board { get; set; }
-        void SetupPlayers(List<Player> players);
+        void Setup(Board board);
         void ShowPlayerLanded(Player player, BoardSpace space);
         void BeforeTurn();
         void PassedGo(Player player);
@@ -178,12 +201,13 @@ namespace Monopoly
             Console.WriteLine($"{player} passed go and collected 200");
         }
 
-        public void SetupPlayers(List<Player> players)
+        public void Setup(Board board)
         {
+            Board = board;
             var numPlayers = Prompt<int>("Enter number of players to create");
             for(int i = 0; i < numPlayers; i++)
             {
-                players.Add(PromptPlayer(i + 1));
+                board.players.Add(PromptPlayer(i + 1));
             }
         }
 

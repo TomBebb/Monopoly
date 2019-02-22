@@ -54,42 +54,32 @@ namespace Monopoly
         { }
     }
 
-    public class StationSpace : BoardSpace
+
+
+    public abstract class BuyableSpace: BoardSpace
     {
-        public Player Owner;
-        public StationSpace(string name): base(name)
-        {
 
-        }
+        public Player Owner = null;
+        abstract public decimal Cost { get; }
+        abstract public decimal MortgageValue { get; }
+        abstract public decimal CalculateRent(Player player);
 
-        public decimal Cost = 200m;
-        public decimal Rent
+        public BuyableSpace(string name): base(name)
         {
-            get
-            {
-                if (Owner == null)
-                    return 0m;
-                switch (Owner.OwnedStations)
-                {
-                    case 1: return 25m;
-                    case 2: return 50m;
-                    case 3: return 100m;
-                    default: return 200m;
-                }
-            }
 
         }
 
         public override void OnPlayerLanded(Player player)
         {
             base.OnPlayerLanded(player);
-            if(player != Owner && Owner != null && !Owner.InJail)
+            if (player != Owner && Owner != null && !Owner.InJail)
             {
-                var rent = Rent;
-                player.Charge(Rent);
-                Owner.Gain(Rent);
+                var rent = CalculateRent(player);
+                player.Charge(rent);
+                Owner.Gain(rent);
                 player.Interacter.ShowPlayerPaidRent(player, Owner, this, rent);
-            } else if(Owner == null)
+            }
+            else if (Owner == null)
             {
                 if (player.Interacter.CheckPlayerBuy(player, this, Cost))
                 {
@@ -100,11 +90,54 @@ namespace Monopoly
         }
     }
 
+    public class Utility : BuyableSpace
+    {
+
+        public override decimal Cost => 150m;
+
+        public override decimal MortgageValue => 75m;
+
+        public Utility(string name) : base(name)
+        {
+        }
+
+        public override decimal CalculateRent(Player player) =>
+            4m * player.LastSpacesMoved;
+    }
+
+    public class StationSpace : BuyableSpace
+    {
+        public StationSpace(string name) : base(name)
+        {
+        }
+
+        public override decimal Cost => 200m;
+
+        public override decimal MortgageValue => 100m;
+
+        public override decimal CalculateRent(Player player)
+        {
+            if (Owner == null)
+                return 0m;
+            switch (Owner.OwnedStations)
+            {
+                case 1: return 25m;
+                case 2: return 50m;
+                case 3: return 100m;
+                default: return 200m;
+            }
+        }
+
+    }
+
     public enum PropertyFamily
     {
         Brown,
         LightBlue,
-        DarkBlue
+        DarkBlue,
+        Pink,
+        Orange,
+        Red
     }
 
     public class CommunityChestSpace : BoardSpace
@@ -125,27 +158,31 @@ namespace Monopoly
         }
     }
 
-    public class Property : BoardSpace
+    public class Property : BuyableSpace
     {
         public Board Board;
         public decimal[] RentValues;
         public int NumHouses = 0;
-        public Player Owner { get; private set; }
-        public decimal Rent => RentValues[NumHouses];
         public decimal HouseCost { get; private set; }
-        public decimal Cost { get; private set; }
-        public decimal MortgageValue { get; private set; }
+        public override decimal Cost => cost;
+        private readonly decimal cost;
+        public override decimal MortgageValue => mortgageValue;
+        private readonly decimal mortgageValue;
         public PropertyFamily Family { get; private set; }
         internal IPlayerInteracter Interacter => Board.playerInteracter;
 
         public Property(Board board, string name, PropertyFamily family, decimal cost, decimal houseCost, decimal mortgageValue, decimal[] rentValues): base(name)
         {
+            if(rentValues.Length != 6)
+            {
+                throw new Exception($"{name} rent values must be in array of: [rent, with 1 house, with 2 houses, with 3 houses, with 4 houses, with hotel]");
+            }
             Board = board;
             RentValues = rentValues;
             Family = family;
-            Cost = cost;
+            this.cost = cost;
             HouseCost = houseCost;
-            MortgageValue = mortgageValue;
+            this.mortgageValue = mortgageValue;
         }
 
         public void AddHouse()
@@ -157,30 +194,11 @@ namespace Monopoly
         }
 
         public bool CanAddHouse()
-        {
-            return (Owner.Money >= HouseCost) && (NumHouses + 1 < RentValues.Length) && (Owner.HasAll(Family));
-        }
+            => (Owner.Money >= HouseCost) && (NumHouses + 1 < RentValues.Length) && (Owner.HasAll(Family));
 
         public override string ToString() => Name;
 
-        public override void OnPlayerLanded(Player player)
-        {
-            base.OnPlayerLanded(player);
-
-            if (Owner != player && Owner != null && !Owner.InJail)
-            {
-                var rent = Rent;
-                player.Charge(Rent);
-                Owner.Gain(Rent);
-                Interacter.ShowPlayerPaidRent(player, Owner, this, rent);
-            } else if(Owner == null)
-            {
-                if (Interacter.CheckPlayerBuy(player, this, Cost))
-                {
-                    Owner = player;
-                    player.AddProperty(this);
-                }
-            }
-        }
+        public override decimal CalculateRent(Player player)
+            => RentValues[NumHouses];
     }
 }
