@@ -11,8 +11,8 @@ namespace Monopoly
     {
         static void Main(string[] args)
         {
-            var board = new ConsoleBoard();
-            board.SetupPlayers();
+            var board = new Board(new ConsolePlayerInteracter());
+            board.Setup();
             while(true)
             {
                 board.DoTurn();

@@ -17,7 +17,7 @@ namespace Monopoly
 
         public virtual void OnPlayerLanded(Player player)
         {
-            player.Board.ShowPlayerLanded(player, this);
+            player.Interacter.ShowPlayerLanded(player, this);
         }
     }
 
@@ -34,7 +34,7 @@ namespace Monopoly
         {
             base.OnPlayerLanded(player);
             player.Charge(Tax);
-            player.Board.ShowTaxed(player, this);
+            player.Interacter.ShowTaxed(player, this);
         }
     }
 
@@ -88,10 +88,10 @@ namespace Monopoly
                 var rent = Rent;
                 player.Charge(Rent);
                 Owner.Gain(Rent);
-                player.Board.ShowPlayerPaidRent(player, Owner, this, rent);
+                player.Interacter.ShowPlayerPaidRent(player, Owner, this, rent);
             } else if(Owner == null)
             {
-                if (player.Board.CheckPlayerBuy(player, this, Cost))
+                if (player.Interacter.CheckPlayerBuy(player, this, Cost))
                 {
                     Owner = player;
                     player.AddProperty(this);
@@ -120,7 +120,7 @@ namespace Monopoly
             base.OnPlayerLanded(player);
 
             var card = player.Board.PickChanceCard();
-            player.Board.ShowPlayerPickedCard(player, card);
+            player.Interacter.ShowPlayerPickedCard(player, card);
             card.DoCard(player);
         }
     }
@@ -136,6 +136,7 @@ namespace Monopoly
         public decimal Cost { get; private set; }
         public decimal MortgageValue { get; private set; }
         public PropertyFamily Family { get; private set; }
+        internal IPlayerInteracter Interacter => Board.playerInteracter;
 
         public Property(Board board, string name, PropertyFamily family, decimal cost, decimal houseCost, decimal mortgageValue, decimal[] rentValues): base(name)
         {
@@ -152,7 +153,7 @@ namespace Monopoly
             if (!CanAddHouse())
                 return;
             NumHouses++;
-            Board.ShowPlayerAddedHouse(Owner, this, NumHouses == RentValues.Last());
+            Interacter.ShowPlayerAddedHouse(Owner, this, NumHouses == RentValues.Last());
         }
 
         public bool CanAddHouse()
@@ -171,10 +172,10 @@ namespace Monopoly
                 var rent = Rent;
                 player.Charge(Rent);
                 Owner.Gain(Rent);
-                player.Board.ShowPlayerPaidRent(player, Owner, this, rent);
+                Interacter.ShowPlayerPaidRent(player, Owner, this, rent);
             } else if(Owner == null)
             {
-                if (player.Board.CheckPlayerBuy(player, this, Cost))
+                if (Interacter.CheckPlayerBuy(player, this, Cost))
                 {
                     Owner = player;
                     player.AddProperty(this);

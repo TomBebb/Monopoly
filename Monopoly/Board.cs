@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Monopoly
 {
-    abstract public class Board
+    public class Board
     {
         private static Card[] ChanceCards = new Card[] {
             new GetOutOfJailFreeCard(),
@@ -38,9 +38,12 @@ namespace Monopoly
         public int CurrentPlayer = 0;
         public int Turn = 1;
 
-        public Board()
-        {
+        public IPlayerInteracter playerInteracter;
 
+        public Board(IPlayerInteracter playerInteracter)
+        {
+            this.playerInteracter = playerInteracter;
+            playerInteracter.Board = this;
             players = new List<Player>();
             boardSpaces = new BoardSpace[]
             {
@@ -65,36 +68,54 @@ namespace Monopoly
             };
         }
 
-        public abstract void SetupPlayers();
-        public abstract void ShowPlayerLanded(Player player, BoardSpace space);
-        public virtual void PassedGo(Player player)
+        public void Setup()
         {
-            player.Gain(200m);
+            playerInteracter.SetupPlayers(players);
         }
-        public abstract void BeforeTurn();
+
         public void DoTurn()
         {
-            BeforeTurn();
+            playerInteracter.BeforeTurn();
             foreach (var player in players)
                 player.Roll();
             Turn++;
         }
-
-        public abstract void ShowPlayerPaidRent(Player player, Player owner, BoardSpace space, decimal amount);
-        public abstract bool CheckPlayerBuy(Player player, BoardSpace property, decimal cost);
-        public abstract bool CheckPlayerUseGetOutOfJailCard(Player player);
-        public abstract bool CheckPlayerPayOutOfJail(Player player);
-        public abstract void ShowTaxed(Player player, TaxSpace space);
-        public abstract void ShowSentToJail(Player player);
-        public abstract void ShowFreedFromJail(Player player, EscapeJailCause cause);
-        public abstract void ShowStillInJail(Player player);
-        public abstract void ShowPlayerRolled(Player player, int dice1, int dice2, bool doubles);
-        public abstract void ShowPlayerMoney(Player player);
-        public abstract void ShowPlayerPickedCard(Player player, Card card);
-        public abstract void ShowPlayerAddedHouse(Player owner, Property prop, bool isHotel);
+        public  void PassedGo(Player player)
+        {
+            player.Gain(200m);
+        }
     }
-    public class ConsoleBoard : Board
+
+    public interface IPlayerInteracter
     {
+        Board Board { get; set; }
+        void SetupPlayers(List<Player> players);
+        void ShowPlayerLanded(Player player, BoardSpace space);
+        void BeforeTurn();
+        void PassedGo(Player player);
+        void ShowPlayerPaidRent(Player player, Player owner, BoardSpace space, decimal amount);
+        bool CheckPlayerBuy(Player player, BoardSpace property, decimal cost);
+        bool CheckPlayerUseGetOutOfJailCard(Player player);
+        bool CheckPlayerPayOutOfJail(Player player);
+        void ShowTaxed(Player player, TaxSpace space);
+        void ShowSentToJail(Player player);
+        void ShowFreedFromJail(Player player, EscapeJailCause cause);
+        void ShowStillInJail(Player player);
+        void ShowPlayerRolled(Player player, int dice1, int dice2, bool doubles);
+        void ShowPlayerMoney(Player player);
+        void ShowPlayerPickedCard(Player player, Card card);
+        void ShowPlayerAddedHouse(Player owner, Property prop, bool isHotel);
+    }
+
+    public class ConsolePlayerInteracter : IPlayerInteracter
+    {
+        public ConsolePlayerInteracter()
+        {
+        }
+
+        public Board Board { get; set; }
+
+
         static T PromptMemberOf<T>(string prompt, IReadOnlyList<T> list)
         {
             Console.Write($"{prompt}: ");
@@ -109,7 +130,7 @@ namespace Monopoly
         static bool PromptBool(string promptMsg) {
             do
             {
-                Console.Write($"{promptMsg}: ");
+                Console.Write($"{promptMsg} (y/n): ");
                 var line = Console.ReadLine();
                 if (line.StartsWith("y", StringComparison.CurrentCultureIgnoreCase))
                 {
@@ -137,7 +158,7 @@ namespace Monopoly
                 try {
                     value = (T)Convert.ChangeType(line, typeof(T));
                     wasValid = true;
-                } catch(FormatException ex) 
+                } catch (FormatException)
                 {
                     wasValid = false;
                 }
@@ -149,16 +170,15 @@ namespace Monopoly
         {
             var name = Prompt<string>($"Enter name for player {index}");
             var isAuto = PromptBool("CPU control this player?");
-            return new Player(this, name) { Auto = isAuto };
+            return new Player(Board, name) { Auto = isAuto };
         }
 
-        public override void PassedGo(Player player)
+        public void PassedGo(Player player)
         {
-            base.PassedGo(player);
             Console.WriteLine($"{player} passed go and collected 200");
         }
 
-        public override void SetupPlayers()
+        public void SetupPlayers(List<Player> players)
         {
             var numPlayers = Prompt<int>("Enter number of players to create");
             for(int i = 0; i < numPlayers; i++)
@@ -167,22 +187,22 @@ namespace Monopoly
             }
         }
 
-        public override void ShowPlayerLanded(Player player, BoardSpace space)
+        public void ShowPlayerLanded(Player player, BoardSpace space)
         {
             Console.WriteLine($"{player} moved by {player.LastSpacesMoved}: landed on {space.Name}!");
         }
 
-        public override void ShowPlayerPaidRent(Player player, Player owner, BoardSpace space, decimal amount)
+        public void ShowPlayerPaidRent(Player player, Player owner, BoardSpace space, decimal amount)
         {
             Console.WriteLine($"{player} gave {space.Name} owner {owner} {amount:C}!");
         }
 
-        public override void ShowPlayerMoney(Player player)
+        public void ShowPlayerMoney(Player player)
         {
             Console.WriteLine($"{player} now has {player.Money:C}");
         }
 
-        public override bool CheckPlayerBuy(Player player, BoardSpace property, decimal cost)
+        public bool CheckPlayerBuy(Player player, BoardSpace property, decimal cost)
         {
             if(player.Auto)
             {
@@ -196,10 +216,11 @@ namespace Monopoly
             }
             return shouldBuy;
         }
-        public override void BeforeTurn()
+        public void BeforeTurn()
         {
-            Console.WriteLine($"Starting turn: {Turn}");
-            foreach(var player in players)
+            Console.WriteLine($"Starting turn: {Board.Turn}");
+
+            foreach(var player in Board.Players)
             {
                 if (player.OwnedProperties.Count == 0)
                 {
@@ -247,16 +268,16 @@ namespace Monopoly
             }
         }
 
-        public override void ShowTaxed(Player player, TaxSpace space)
+        public void ShowTaxed(Player player, TaxSpace space)
         {
             Console.WriteLine($"{player} charged by ${space.Tax:C} at ${space.Name}");
         }
-        public override void ShowSentToJail(Player player)
+        public void ShowSentToJail(Player player)
         {
             Console.WriteLine($"{player} sent to jail");
         }
 
-        public override void ShowFreedFromJail(Player player, EscapeJailCause cause)
+        public void ShowFreedFromJail(Player player, EscapeJailCause cause)
         {
             switch (cause)
             {
@@ -273,31 +294,31 @@ namespace Monopoly
 
         }
 
-        public override void ShowStillInJail(Player player)
+        public void ShowStillInJail(Player player)
         {
             Console.WriteLine($"{player} is still in jail!");
         }
 
-        public override void ShowPlayerRolled(Player player, int dice1, int dice2, bool doubles)
+        public void ShowPlayerRolled(Player player, int dice1, int dice2, bool doubles)
         {
             Console.WriteLine($"{player} rolled {dice1} and {dice2}. doubles: {doubles}");
         }
 
-        public override bool CheckPlayerPayOutOfJail(Player player)
+        public bool CheckPlayerPayOutOfJail(Player player)
         {
             return PromptBool($"Will {player} pay {50:C} to get out of jail?");
         }
 
-        public override bool CheckPlayerUseGetOutOfJailCard(Player player)
+        public bool CheckPlayerUseGetOutOfJailCard(Player player)
         {
             return PromptBool($"Will  {player} use their get out of jail free card?");
         }
-        public override void ShowPlayerPickedCard(Player player, Card card)
+        public void ShowPlayerPickedCard(Player player, Card card)
         {
             Console.WriteLine($"{player} picked card {card}");
         }
 
-        public override void ShowPlayerAddedHouse(Player owner, Property prop, bool isHotel)
+        public void ShowPlayerAddedHouse(Player owner, Property prop, bool isHotel)
         {
             Console.WriteLine($"{owner} added {(isHotel ? "hotel" : "house")} to {prop.Name}");
         }
