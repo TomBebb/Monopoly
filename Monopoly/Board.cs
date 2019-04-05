@@ -12,7 +12,7 @@ namespace Monopoly
             new GetOutOfJailFreeCard(),
             new GoToJailCard()
         };
-
+        public void AddPlayer(Player p) => players.Add(p);
         private Random rng = new Random();
         public int RollDice()
         {
